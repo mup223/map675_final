@@ -29,6 +29,15 @@
             background-color: white;
             z-index: 2;
         }
+
+        #age-box {
+            position: absolute;
+            bottom: 0;
+            margin-bottom: 110px;
+            margin-left: 20px;
+            background-color: white;
+            z-index: 2;
+        }
     </style>
 </head>
 
@@ -37,7 +46,7 @@
     <div id='map'></div>
 
     <div id="race-box">
-        <input type="radio" id="white" name="race-checker" value="white">
+        <input type="radio" id="white" name="race-checker" value="white" checked>
         <label for="white">White</label><br>
         <input type="radio" id="white-hispanic" name="race-checker" value="white-hispanic">
         <label for="white-hispanic">White Hispanic</label><br>
@@ -45,6 +54,15 @@
         <label for="black">Black</label><br>
         <input type="radio" id="black-hispanic" name="race-checker" value="black-hispanic">
         <label for="black-hispanic">Black Hispanic</label><br>
+    </div>
+
+    <div id="age-box">
+        <input type="radio" id="eighteen" name="age-checker" checked>
+        <label for="eighteen">18-24</label><br>
+        <input type="radio" id="twenty-five" name="age-checker">
+        <label for="twenty-five">25-44</label><br>
+        <input type="radio" id="forty-five" name="age-checker">
+        <label for="forty-five">45-64</label><br>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"
@@ -60,11 +78,69 @@
             zoom: 10,
         });
 
-        let race = 'WHITE'
-        let sex = 'M'
-        let age = '18-24'
+        let race
+        let sex
+        let age
         let newGeoJ
+
+        $('#black').click(() => {
+            race = 'BLACK'
+            updateData();
+        })
+
+        $('#white').click(() => {
+            race = 'WHITE'
+            updateData();
+        })
+
+        $('#white-hispanic').click(() => {
+            race = 'WHITE HISPANIC'
+            updateData();
+        })
+
+        $('#black-hispanic').click(() => {
+            race = 'BLACK HISPANIC'
+            updateData();
+        })
+
+        $('#eighteen').click(() => {
+            age = '18-24'
+            updateData();
+        })
+
+        $('#twenty-five').click(() => {
+            age = '25-44'
+            updateData();
+        })
+
+        $('#forty-five').click(() => {
+            age = '45-64'
+            updateData();
+        })
+
+        function updateData() {
+            $.getJSON('data/nypd_records_slim.json', (data) => {
+                // console.log(data)
+                currentData = data.features.filter(word => word.properties.perp_race === race && word
+                    .properties
+                    .age_group === age && word.properties.perp_sex === sex)
+
+                newGeoJ = {
+                    "type": "FeatureCollection",
+                    "features": currentData
+                }
+
+                // console.log(newGeoJ)
+
+                updateMap(newGeoJ)
+
+            })
+        }
+
         let crimeFile = $.getJSON('data/nypd_records_slim.json', (data) => {
+            race = 'WHITE'
+            sex = 'M'
+            age = '18-24'
             // console.log(data)
             currentData = data.features.filter(word => word.properties.perp_race === race && word.properties
                 .age_group === age && word.properties.perp_sex === sex)
@@ -76,34 +152,52 @@
 
             // console.log(newGeoJ)
 
-            mapData(newGeoJ)
+            map.on('load', () => mapData(newGeoJ))
 
         })
+
+
+        function updateMap(data) {
+            map.removeLayer('incidents');
+            map.removeSource('incidents');
+
+            map.addSource('incidents', {
+                'type': 'geojson',
+                'data': data
+            });
+
+            map.addLayer({
+                'id': 'incidents',
+                'type': 'heatmap',
+                'source': 'incidents',
+                // 'maxzoom': 9,
+                'paint': {
+                    "heatmap-radius": 9.5
+                }
+
+            });
+        }
 
         // console.log(crimeFile)
 
         function mapData(data) {
+
             map.addSource('incidents', {
                 'type': 'geojson',
                 'data': data
-            })
+            });
 
-            // Add a new layer to visualize the polygon.
             map.addLayer({
                 'id': 'incidents',
-                'type': 'circle',
-                'source': 'incidents', // reference the data source
-                'layout': {},
-                // 'paint': {
-                //     'fill-color': '#0080ff', // blue color fill
-                //     'fill-opacity': 0.5
-                // }
+                'type': 'heatmap',
+                'source': 'incidents',
+                // 'maxzoom': 9,
+                'paint': {
+                    "heatmap-radius": 10
+                }
+
             });
         }
-
-        map.on('load', () => {
-
-        })
 
         map.addControl(new mapboxgl.NavigationControl());
     </script>
