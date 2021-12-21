@@ -3,7 +3,7 @@
 
 <head>
     <meta charset='utf-8' />
-    <title>Display a map</title>
+    <title>MAP 675 Final Project</title>
     <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
     <script src='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js'></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css' rel='stylesheet' />
@@ -22,47 +22,74 @@
         }
 
         #race-box {
-            position: absolute;
-            bottom: 0;
-            margin-bottom: 20px;
-            margin-left: 20px;
-            background-color: white;
-            z-index: 2;
+            border: solid black 1px;
+            border-radius: 5px;
+            padding: 5px;
         }
 
         #age-box {
+            border: solid black 1px;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        h3 {
+            margin: 0
+        }
+
+        #map-controls {
             position: absolute;
             bottom: 0;
-            margin-bottom: 110px;
+            margin-bottom: 40px;
             margin-left: 20px;
             background-color: white;
             z-index: 2;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        #title h3 {
+            color: white;
+            background-color: rgba(85, 85, 85, 0.75);
+            padding: 20px;
+            position: absolute;
+            margin-left: 43%;
+            z-index: 2;
+            border-radius: 5px;
+            border: solid white 2px;
         }
     </style>
 </head>
 
 <body>
 
-    <div id='map'></div>
-
-    <div id="race-box">
-        <input type="radio" id="white" name="race-checker" value="white" checked>
-        <label for="white">White</label><br>
-        <input type="radio" id="white-hispanic" name="race-checker" value="white-hispanic">
-        <label for="white-hispanic">White Hispanic</label><br>
-        <input type="radio" id="black" name="race-checker" value="black">
-        <label for="black">Black</label><br>
-        <input type="radio" id="black-hispanic" name="race-checker" value="black-hispanic">
-        <label for="black-hispanic">Black Hispanic</label><br>
+    <div id="title">
+        <h3>NYC Crime Demographics</h3>
     </div>
 
-    <div id="age-box">
-        <input type="radio" id="eighteen" name="age-checker" checked>
-        <label for="eighteen">18-24</label><br>
-        <input type="radio" id="twenty-five" name="age-checker">
-        <label for="twenty-five">25-44</label><br>
-        <input type="radio" id="forty-five" name="age-checker">
-        <label for="forty-five">45-64</label><br>
+    <div id='map'></div>
+
+    <div id="map-controls">
+        <h3>Age & Race</h3>
+        <div id="race-box">
+            <input type="radio" id="white" name="race-checker" value="white" checked>
+            <label for="white">White</label><br>
+            <input type="radio" id="white-hispanic" name="race-checker" value="white-hispanic">
+            <label for="white-hispanic">White Hispanic</label><br>
+            <input type="radio" id="black" name="race-checker" value="black">
+            <label for="black">Black</label><br>
+            <input type="radio" id="black-hispanic" name="race-checker" value="black-hispanic">
+            <label for="black-hispanic">Black Hispanic</label><br>
+        </div>
+
+        <div id="age-box">
+            <input type="radio" id="eighteen" name="age-checker" checked>
+            <label for="eighteen">18-24</label><br>
+            <input type="radio" id="twenty-five" name="age-checker">
+            <label for="twenty-five">25-44</label><br>
+            <input type="radio" id="forty-five" name="age-checker">
+            <label for="forty-five">45-64</label><br>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"
@@ -120,7 +147,6 @@
 
         function updateData() {
             $.getJSON('data/nypd_records_slim.json', (data) => {
-                // console.log(data)
                 currentData = data.features.filter(word => word.properties.perp_race === race && word
                     .properties
                     .age_group === age && word.properties.perp_sex === sex)
@@ -129,8 +155,6 @@
                     "type": "FeatureCollection",
                     "features": currentData
                 }
-
-                // console.log(newGeoJ)
 
                 updateMap(newGeoJ)
 
@@ -141,7 +165,6 @@
             race = 'WHITE'
             sex = 'M'
             age = '18-24'
-            // console.log(data)
             currentData = data.features.filter(word => word.properties.perp_race === race && word.properties
                 .age_group === age && word.properties.perp_sex === sex)
 
@@ -150,14 +173,13 @@
                 "features": currentData
             }
 
-            // console.log(newGeoJ)
-
             map.on('load', () => mapData(newGeoJ))
 
         })
 
 
         function updateMap(data) {
+            map.removeLayer('incidents-point')
             map.removeLayer('incidents');
             map.removeSource('incidents');
 
@@ -176,9 +198,49 @@
                 }
 
             });
-        }
 
-        // console.log(crimeFile)
+            map.addLayer({
+                'id': 'incidents-point',
+                'type': 'circle',
+                'minzoom': 3,
+                'source': 'incidents',
+                'paint': {
+                    'circle-opacity': 0
+                }
+            });
+
+            // Create a popup, but don't add it to the map yet.
+            const popup = new mapboxgl.Popup({
+                closeButton: false,
+                closeOnClick: false
+            });
+
+            map.on('mouseenter', 'incidents-point', (e) => {
+                // Change the cursor style as a UI indicator.
+                map.getCanvas().style.cursor = 'pointer';
+
+                // Copy coordinates array.
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                const description = "Crime: " + e.features[0].properties.ofns_desc;
+
+                // Ensure that if the map is zoomed out such that multiple
+                // copies of the feature are visible, the popup appears
+                // over the copy being pointed to.
+                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                }
+
+                // Populate the popup and set its coordinates
+                // based on the feature found.
+                popup.setLngLat(coordinates).setHTML(description).addTo(map);
+            });
+
+            map.on('mouseleave', 'incidents-point', () => {
+                map.getCanvas().style.cursor = '';
+                popup.remove();
+            });
+
+        }
 
         function mapData(data) {
 
@@ -191,11 +253,52 @@
                 'id': 'incidents',
                 'type': 'heatmap',
                 'source': 'incidents',
-                // 'maxzoom': 9,
+                // 'maxzoom': 4,
                 'paint': {
                     "heatmap-radius": 10
                 }
 
+            });
+
+            map.addLayer({
+                'id': 'incidents-point',
+                'type': 'circle',
+                'minzoom': 3,
+                'source': 'incidents',
+                'paint': {
+                    'circle-opacity': 0
+                }
+            });
+
+            // Create a popup, but don't add it to the map yet.
+            const popup = new mapboxgl.Popup({
+                closeButton: false,
+                closeOnClick: false
+            });
+
+            map.on('mouseenter', 'incidents-point', (e) => {
+                // Change the cursor style as a UI indicator.
+                map.getCanvas().style.cursor = 'pointer';
+
+                // Copy coordinates array.
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                const description = "Crime: " + e.features[0].properties.ofns_desc;
+
+                // Ensure that if the map is zoomed out such that multiple
+                // copies of the feature are visible, the popup appears
+                // over the copy being pointed to.
+                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                }
+
+                // Populate the popup and set its coordinates
+                // based on the feature found.
+                popup.setLngLat(coordinates).setHTML(description).addTo(map);
+            });
+
+            map.on('mouseleave', 'incidents-point', () => {
+                map.getCanvas().style.cursor = '';
+                popup.remove();
             });
         }
 

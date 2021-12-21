@@ -11,3 +11,4 @@ In this project my goal was to be able to toggle the different areas of hotspots
     - `mapshaper nypd_data.geojson -filter-fields age_group,latitude,longitude,perp_race,perp_sex,ofns_desc -simplify dp 15% -o precision=.00001 format=geojson nypd_records_slim.json`
 2. Now it's time to make a heatmap of of the data using Mapbox's heatmap styling option.
     - `https://docs.mapbox.com/mapbox-gl-js/style-spec/layers/#heatmap`
+3. I was going to add a horizontal bar chart to the map, but by the time I went to add it, I didn't realize just how many categories of crime there were in the ofnc_desc field. I just thought with that much it would look a little overwhelming so I opted for a pop-up on hover.
